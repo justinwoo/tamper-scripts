@@ -130,8 +130,8 @@ function redirectFromShorts() {
 }
 
 function syncYouTubeTitle() {
-  const titleElem = document.querySelector('#title > h1 > yt-formatted-string');
-  const player = document.querySelector('#movie_player');
+  const titleElem = document.querySelector("#title > h1 > yt-formatted-string");
+  const player = document.querySelector("#movie_player");
   const playerTitle = player?.getPlayerResponse?.()?.videoDetails?.title;
 
   if (playerTitle) {
@@ -141,6 +141,97 @@ function syncYouTubeTitle() {
     if (document.title !== playerTitle) {
       document.title = playerTitle;
     }
+  }
+}
+
+function waitForElement(selector, maxAttempts = 10, context = document) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+
+    // Check immediately in case the element already exists
+    const element = context.querySelector(selector);
+    if (element) {
+      resolve(element);
+      return;
+    }
+
+    const observer = new MutationObserver((_mutations, obs) => {
+      attempts++;
+      const element = context.querySelector(selector);
+
+      if (element) {
+        obs.disconnect();
+        resolve(element);
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        obs.disconnect();
+        reject(`Element ${selector} not found after ${maxAttempts} attempts`);
+      }
+    });
+
+    observer.observe(context === document ? document.body : context, {
+      childList: true,
+      subtree: true,
+    });
+  });
+}
+
+async function saveWatchLater() {
+  try {
+    // Find the Save button
+    const saveButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => {
+        const text = button.textContent.trim().toLowerCase();
+        return text.includes("save");
+      },
+    );
+
+    if (!saveButton) {
+      throw new Error("Save button not found");
+    }
+
+    // Click the Save button to open the modal
+    saveButton.click();
+
+    // Wait for the modal to appear
+    await waitForElement("ytd-playlist-add-to-option-renderer");
+
+    // Find the Watch Later option in the modal
+    const watchLaterOption = Array.from(
+      document.querySelectorAll("ytd-playlist-add-to-option-renderer"),
+    ).find((option) => {
+      const text = option.textContent.trim().toLowerCase();
+      return text.includes("watch later");
+    });
+
+    if (!watchLaterOption) {
+      throw new Error("Watch Later option not found in modal");
+    }
+
+    // Wait for the checkbox to be fully rendered
+    const checkbox = await waitForElement(
+      "tp-yt-paper-checkbox",
+      10,
+      watchLaterOption,
+    );
+
+    // Check if it's already checked
+    const isChecked =
+      checkbox.hasAttribute("checked") ||
+      checkbox.getAttribute("aria-checked") === "true";
+
+    // Only click if it's not already checked
+    if (!isChecked) {
+      checkbox.click();
+      msg("Added to Watch Later");
+    } else {
+      msg("Already in Watch Later");
+    }
+  } catch (error) {
+    msg(error.message || "Error adding to Watch Later");
+    console.error("Error from Watch Later:", error);
   }
 }
 
@@ -171,6 +262,15 @@ function syncYouTubeTitle() {
     if (e.key === "'") {
       correctAudioTrack();
       syncYouTubeTitle();
+    }
+
+    if (e.key === "'") {
+      correctAudioTrack();
+      syncYouTubeTitle();
+    }
+
+    if (e.key === "\\") {
+      saveWatchLater();
     }
   });
 
