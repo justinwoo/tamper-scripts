@@ -129,6 +129,21 @@ function redirectFromShorts() {
   }
 }
 
+function syncYouTubeTitle() {
+  const titleElem = document.querySelector('#title > h1 > yt-formatted-string');
+  const player = document.querySelector('#movie_player');
+  const playerTitle = player?.getPlayerResponse?.()?.videoDetails?.title;
+
+  if (playerTitle) {
+    if (titleElem && titleElem.innerText !== playerTitle) {
+      titleElem.innerText = playerTitle;
+    }
+    if (document.title !== playerTitle) {
+      document.title = playerTitle;
+    }
+  }
+}
+
 (function () {
   "use strict";
 
@@ -153,7 +168,10 @@ function redirectFromShorts() {
     if (e.key === "z") shiftTime(-4);
     if (e.key === "x") shiftTime(4);
 
-    if (e.key === "'") correctAudioTrack();
+    if (e.key === "'") {
+      correctAudioTrack();
+      syncYouTubeTitle();
+    }
   });
 
   redirectFromShortsDelayed();
